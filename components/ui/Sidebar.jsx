@@ -1,6 +1,7 @@
 "use client";
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
+import { useRouter } from "next/router";
 import { cva } from "class-variance-authority";
 import { PanelLeft } from "lucide-react";
 import { useIsMobile } from "../../utils/useMobile";
@@ -16,9 +17,20 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "./Tooltip";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "./Accordion";
 import Link from "next/link";
 
-// ... (SIDEBAR_COOKIE_NAME, SIDEBAR_WIDTH, etc. unchanged)
+const SIDEBAR_COOKIE_NAME = "sidebar_state";
+const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
+const SIDEBAR_WIDTH = "16rem";
+const SIDEBAR_WIDTH_MOBILE = "18rem";
+const SIDEBAR_WIDTH_ICON = "3rem";
+const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
 const SidebarContext = React.createContext(null);
 
@@ -116,8 +128,10 @@ const SidebarProvider = React.forwardRef(
 SidebarProvider.displayName = "SidebarProvider";
 
 const Sidebar = React.forwardRef(
-  ({ side = "left", variant = "sidebar", collapsible = "icon", className, sidebarData, ...props }, ref) => { // Added sidebarData prop
+  ({ side = "left", variant = "sidebar", collapsible = "offcanvas", className, sidebarData, ...props }, ref) => {
     const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+    const router = useRouter();
+    const activePath = router.asPath; // Current URL path
 
     if (collapsible === "none") {
       return (
@@ -134,116 +148,144 @@ const Sidebar = React.forwardRef(
       );
     }
 
-    if (isMobile) {
-      return (
-        <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
-          <SheetContent
-            data-sidebar="sidebar"
-            data-mobile="true"
-            className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
-            style={{ "--sidebar-width": SIDEBAR_WIDTH_MOBILE }}
-            side={side}
-          >
-            <div className="flex h-full w-full flex-col">
-              <SidebarHeader>
-                <h2 className="text-xl font-bold">UnityVersity Wiki</h2>
-              </SidebarHeader>
-              <SidebarContent>
-                {Object.entries(sidebarData).map(([category, subs]) => (
-                  <SidebarGroup key={category}>
-                    <SidebarGroupLabel>{category}</SidebarGroupLabel>
-                    <SidebarGroupContent>
-                      {subs.map((sub) => (
-                        <SidebarMenu key={sub.name}>
-                          <SidebarMenuItem>
-                            <SidebarMenuButton asChild>
-                              <span>{sub.name}</span>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                          {sub.guides.map((guide) => (
-                            <SidebarMenuItem key={guide.slug}>
-                              <SidebarMenuButton asChild>
-                                <Link href={`/wiki/${guide.path}`}>{guide.title}</Link>
-                              </SidebarMenuButton>
-                            </SidebarMenuItem>
-                          ))}
-                        </SidebarMenu>
-                      ))}
-                    </SidebarGroupContent>
-                  </SidebarGroup>
-                ))}
-              </SidebarContent>
-            </div>
-          </SheetContent>
-        </Sheet>
-      );
-    }
-
     return (
       <div
         ref={ref}
-        className="group peer hidden text-sidebar-foreground md:block"
+        className="group peer text-sidebar-foreground"
         data-state={state}
-        data-collapsible={state === "collapsed" ? collapsible : ""}
+        data-collapsible={state === "collapsed" ? "offcanvas" : ""}
         data-variant={variant}
         data-side={side}
       >
         <div
           className={cn(
-            "relative h-svh w-[--sidebar-width] bg-transparent transition-[width] duration-200 ease-linear",
+            "relative h-svh w-[--sidebar-width] transition-[width] duration-200 ease-linear overflow-hidden",
             "group-data-[collapsible=offcanvas]:w-0",
-            "group-data-[side=right]:rotate-180",
-            variant === "floating" || variant === "inset"
-              ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
-              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]"
+            !isMobile && "md:block" // Desktop only
           )}
-        />
-        <div
-          className={cn(
-            "fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] duration-200 ease-linear md:flex",
-            side === "left"
-              ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
-              : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
-            variant === "floating" || variant === "inset"
-              ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
-              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l",
-            className
-          )}
-          {...props}
         >
-          <div
-            data-sidebar="sidebar"
-            className="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow"
-          >
-            <SidebarHeader>
-              <h2 className="text-xl font-bold">UnityVersity Wiki</h2>
-            </SidebarHeader>
-            <SidebarContent>
-              {Object.entries(sidebarData).map(([category, subs]) => (
-                <SidebarGroup key={category}>
-                  <SidebarGroupLabel>{category}</SidebarGroupLabel>
-                  <SidebarGroupContent>
-                    {subs.map((sub) => (
-                      <SidebarMenu key={sub.name}>
-                        <SidebarMenuItem>
-                          <SidebarMenuButton asChild>
-                            <span>{sub.name}</span>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                        {sub.guides.map((guide) => (
-                          <SidebarMenuItem key={guide.slug}>
-                            <SidebarMenuButton asChild>
-                              <Link href={`/wiki/${guide.path}`}>{guide.title}</Link>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                        ))}
-                      </SidebarMenu>
+          {isMobile ? (
+            <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
+              <SheetContent
+                data-sidebar="sidebar"
+                data-mobile="true"
+                className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
+                style={{ "--sidebar-width": SIDEBAR_WIDTH_MOBILE }}
+                side={side}
+              >
+                <div className="flex h-full w-full flex-col">
+                  <SidebarHeader>
+                    <SidebarMenu>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton size="lg" asChild>
+                          <a href="/">
+                            <img
+                              src="https://storage.googleapis.com/msgsndr/U1LyvN0Fj47l0gyGYOXj/media/67b9debf8c2b821de216d241.png"
+                              alt="UnityVersity Logo"
+                              className="h-10 w-10 rounded-lg"
+                            />
+                            <div className="flex flex-col gap-1 leading-none">
+                              <span className="font-semibold text-lg">Wiki</span>
+                              <span className="text-sm text-sidebar-foreground/70">v1.0.0</span>
+                            </div>
+                          </a>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </SidebarMenu>
+                  </SidebarHeader>
+                  <SidebarContent>
+                    <Accordion type="single" collapsible className="w-full" value={activePath.split("/")[2]}>
+                      {Object.entries(sidebarData).map(([category, subs]) => (
+                        <AccordionItem key={category} value={category}>
+                          <AccordionTrigger className="text-base font-medium text-sidebar-foreground">
+                            {category}
+                          </AccordionTrigger>
+                          <AccordionContent>
+                            {subs.map((sub) => (
+                              <SidebarMenu key={sub.name}>
+                                <SidebarMenuItem>
+                                  <SidebarMenuButton
+                                    asChild
+                                    className="text-sm"
+                                    data-active={activePath === `/guides/${category}/${sub.name}`}
+                                  >
+                                    <Link href={`/guides/${category}/${sub.name}`}>{sub.name}</Link>
+                                  </SidebarMenuButton>
+                                </SidebarMenuItem>
+                              </SidebarMenu>
+                            ))}
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  </SidebarContent>
+                </div>
+              </SheetContent>
+            </Sheet>
+          ) : (
+            <div
+              className={cn(
+                "fixed inset-y-0 z-10 h-svh w-[--sidebar-width] transition-[width] duration-200 ease-linear",
+                side === "left"
+                  ? "left-0 group-data-[collapsible=offcanvas]:w-0"
+                  : "right-0 group-data-[collapsible=offcanvas]:w-0",
+                "group-data-[side=left]:border-r group-data-[side=right]:border-l",
+                className
+              )}
+              {...props}
+            >
+              <div
+                data-sidebar="sidebar"
+                className="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow"
+              >
+                <SidebarHeader>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton size="lg" asChild>
+                        <a href="/">
+                          <img
+                            src="https://storage.googleapis.com/msgsndr/U1LyvN0Fj47l0gyGYOXj/media/67b9debf8c2b821de216d241.png"
+                            alt="UnityVersity Logo"
+                            className="h-10 w-10 rounded-lg"
+                          />
+                          <div className="flex flex-col gap-1 leading-none">
+                            <span className="font-semibold text-lg">Wiki</span>
+                            <span className="text-sm text-sidebar-foreground/70">v1.0.0</span>
+                          </div>
+                        </a>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarHeader>
+                <SidebarContent>
+                  <Accordion type="single" collapsible className="w-full" value={activePath.split("/")[2]}>
+                    {Object.entries(sidebarData).map(([category, subs]) => (
+                      <AccordionItem key={category} value={category}>
+                        <AccordionTrigger className="text-base font-medium text-sidebar-foreground">
+                          {category}
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          {subs.map((sub) => (
+                            <SidebarMenu key={sub.name}>
+                              <SidebarMenuItem>
+                                <SidebarMenuButton
+                                  asChild
+                                  className="text-sm"
+                                  data-active={activePath === `/guides/${category}/${sub.name}`}
+                                >
+                                  <Link href={`/guides/${category}/${sub.name}`}>{sub.name}</Link>
+                                </SidebarMenuButton>
+                              </SidebarMenuItem>
+                            </SidebarMenu>
+                          ))}
+                        </AccordionContent>
+                      </AccordionItem>
                     ))}
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              ))}
-            </SidebarContent>
-          </div>
+                  </Accordion>
+                </SidebarContent>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -251,9 +293,6 @@ const Sidebar = React.forwardRef(
 );
 Sidebar.displayName = "Sidebar";
 
-// ... (SidebarTrigger, SidebarRail, SidebarInset, etc. unchanged below)
-
-// SidebarTrigger
 const SidebarTrigger = React.forwardRef(({ className, onClick, ...props }, ref) => {
   const { toggleSidebar } = useSidebar();
 
@@ -277,7 +316,6 @@ const SidebarTrigger = React.forwardRef(({ className, onClick, ...props }, ref) 
 });
 SidebarTrigger.displayName = "SidebarTrigger";
 
-// SidebarRail
 const SidebarRail = React.forwardRef(({ className, ...props }, ref) => {
   const { toggleSidebar } = useSidebar();
 
@@ -304,7 +342,6 @@ const SidebarRail = React.forwardRef(({ className, ...props }, ref) => {
 });
 SidebarRail.displayName = "SidebarRail";
 
-// SidebarInset
 const SidebarInset = React.forwardRef(({ className, ...props }, ref) => {
   return (
     <main
@@ -320,7 +357,6 @@ const SidebarInset = React.forwardRef(({ className, ...props }, ref) => {
 });
 SidebarInset.displayName = "SidebarInset";
 
-// SidebarInput
 const SidebarInput = React.forwardRef(({ className, ...props }, ref) => {
   return (
     <Input
@@ -336,20 +372,18 @@ const SidebarInput = React.forwardRef(({ className, ...props }, ref) => {
 });
 SidebarInput.displayName = "SidebarInput";
 
-// SidebarHeader
 const SidebarHeader = React.forwardRef(({ className, ...props }, ref) => {
   return (
     <div
       ref={ref}
       data-sidebar="header"
-      className={cn("flex flex-col gap-2 p-2", className)}
+      className={cn("flex flex-col gap-2 p-4", className)}
       {...props}
     />
   );
 });
 SidebarHeader.displayName = "SidebarHeader";
 
-// SidebarFooter
 const SidebarFooter = React.forwardRef(({ className, ...props }, ref) => {
   return (
     <div
@@ -362,7 +396,6 @@ const SidebarFooter = React.forwardRef(({ className, ...props }, ref) => {
 });
 SidebarFooter.displayName = "SidebarFooter";
 
-// SidebarSeparator
 const SidebarSeparator = React.forwardRef(({ className, ...props }, ref) => {
   return (
     <Separator
@@ -375,14 +408,13 @@ const SidebarSeparator = React.forwardRef(({ className, ...props }, ref) => {
 });
 SidebarSeparator.displayName = "SidebarSeparator";
 
-// SidebarContent
 const SidebarContent = React.forwardRef(({ className, ...props }, ref) => {
   return (
     <div
       ref={ref}
       data-sidebar="content"
       className={cn(
-        "flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
+        "flex min-h-0 flex-1 flex-col gap-4 overflow-auto group-data-[collapsible=icon]:overflow-hidden p-4",
         className
       )}
       {...props}
@@ -391,7 +423,6 @@ const SidebarContent = React.forwardRef(({ className, ...props }, ref) => {
 });
 SidebarContent.displayName = "SidebarContent";
 
-// SidebarGroup
 const SidebarGroup = React.forwardRef(({ className, ...props }, ref) => {
   return (
     <div
@@ -404,7 +435,6 @@ const SidebarGroup = React.forwardRef(({ className, ...props }, ref) => {
 });
 SidebarGroup.displayName = "SidebarGroup";
 
-// SidebarGroupLabel
 const SidebarGroupLabel = React.forwardRef(({ className, asChild = false, ...props }, ref) => {
   const Comp = asChild ? Slot : "div";
 
@@ -413,7 +443,7 @@ const SidebarGroupLabel = React.forwardRef(({ className, asChild = false, ...pro
       ref={ref}
       data-sidebar="group-label"
       className={cn(
-        "flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 outline-none ring-sidebar-ring transition-[margin,opacity] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+        "flex h-8 shrink-0 items-center rounded-md px-2 text-base font-medium text-sidebar-foreground/70 outline-none ring-sidebar-ring transition-[margin,opacity] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
         "group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0",
         className
       )}
@@ -423,7 +453,6 @@ const SidebarGroupLabel = React.forwardRef(({ className, asChild = false, ...pro
 });
 SidebarGroupLabel.displayName = "SidebarGroupLabel";
 
-// SidebarGroupAction
 const SidebarGroupAction = React.forwardRef(({ className, asChild = false, ...props }, ref) => {
   const Comp = asChild ? Slot : "button";
 
@@ -443,7 +472,6 @@ const SidebarGroupAction = React.forwardRef(({ className, asChild = false, ...pr
 });
 SidebarGroupAction.displayName = "SidebarGroupAction";
 
-// SidebarGroupContent
 const SidebarGroupContent = React.forwardRef(({ className, ...props }, ref) => (
   <div
     ref={ref}
@@ -454,7 +482,6 @@ const SidebarGroupContent = React.forwardRef(({ className, ...props }, ref) => (
 ));
 SidebarGroupContent.displayName = "SidebarGroupContent";
 
-// SidebarMenu
 const SidebarMenu = React.forwardRef(({ className, ...props }, ref) => (
   <ul
     ref={ref}
@@ -465,7 +492,6 @@ const SidebarMenu = React.forwardRef(({ className, ...props }, ref) => (
 ));
 SidebarMenu.displayName = "SidebarMenu";
 
-// SidebarMenuItem
 const SidebarMenuItem = React.forwardRef(({ className, ...props }, ref) => (
   <li
     ref={ref}
@@ -498,7 +524,6 @@ const sidebarMenuButtonVariants = cva(
   }
 );
 
-// SidebarMenuButton
 const SidebarMenuButton = React.forwardRef(
   ({ asChild = false, isActive = false, variant = "default", size = "default", tooltip, className, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
@@ -533,7 +558,6 @@ const SidebarMenuButton = React.forwardRef(
 );
 SidebarMenuButton.displayName = "SidebarMenuButton";
 
-// SidebarMenuAction
 const SidebarMenuAction = React.forwardRef(
   ({ className, asChild = false, showOnHover = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
@@ -560,7 +584,6 @@ const SidebarMenuAction = React.forwardRef(
 );
 SidebarMenuAction.displayName = "SidebarMenuAction";
 
-// SidebarMenuBadge
 const SidebarMenuBadge = React.forwardRef(({ className, ...props }, ref) => (
   <div
     ref={ref}
@@ -579,7 +602,6 @@ const SidebarMenuBadge = React.forwardRef(({ className, ...props }, ref) => (
 ));
 SidebarMenuBadge.displayName = "SidebarMenuBadge";
 
-// SidebarMenuSkeleton
 const SidebarMenuSkeleton = React.forwardRef(
   ({ className, showIcon = false, ...props }, ref) => {
     const width = React.useMemo(() => `${Math.floor(Math.random() * 40) + 50}%`, []);
@@ -603,7 +625,6 @@ const SidebarMenuSkeleton = React.forwardRef(
 );
 SidebarMenuSkeleton.displayName = "SidebarMenuSkeleton";
 
-// SidebarMenuSub
 const SidebarMenuSub = React.forwardRef(({ className, ...props }, ref) => (
   <ul
     ref={ref}
@@ -618,11 +639,9 @@ const SidebarMenuSub = React.forwardRef(({ className, ...props }, ref) => (
 ));
 SidebarMenuSub.displayName = "SidebarMenuSub";
 
-// SidebarMenuSubItem
 const SidebarMenuSubItem = React.forwardRef(({ ...props }, ref) => <li ref={ref} {...props} />);
 SidebarMenuSubItem.displayName = "SidebarMenuSubItem";
 
-// SidebarMenuSubButton
 const SidebarMenuSubButton = React.forwardRef(
   ({ asChild = false, size = "md", isActive, className, ...props }, ref) => {
     const Comp = asChild ? Slot : "a";
